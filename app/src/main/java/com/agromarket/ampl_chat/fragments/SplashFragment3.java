@@ -11,7 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.agromarket.ampl_chat.MainActivity;
+import com.agromarket.ampl_chat.LoginActivity;
 import com.agromarket.ampl_chat.R;
 
 public class SplashFragment3 extends Fragment {
@@ -31,7 +31,7 @@ public class SplashFragment3 extends Fragment {
         );
 
         view.findViewById(R.id.btnLogin).setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), MainActivity.class);
+            Intent intent = new Intent(getActivity(), LoginActivity.class);
             startActivity(intent);
             requireActivity().finish(); // Optional: closes the current activity so user can't go back
         });

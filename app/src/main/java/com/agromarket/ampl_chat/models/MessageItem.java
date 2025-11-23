@@ -6,5 +6,10 @@ public class MessageItem {
 
     public int type;
     public String text;
-    public int imageRes;
+    public String imageUrl;    // for product images
+    public boolean isSent;     // true when sender == current user
+    public String time;        // optional created_at
+
+    // default empty constructor
+    public MessageItem() {}
 }

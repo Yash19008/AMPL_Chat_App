@@ -5,6 +5,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -19,11 +20,29 @@ import com.agromarket.ampl_chat.adapters.ChatMessageAdapter;
 import com.agromarket.ampl_chat.adapters.ProductAdapter;
 import com.agromarket.ampl_chat.models.MessageItem;
 import com.agromarket.ampl_chat.models.ProductItem;
+import com.agromarket.ampl_chat.models.api.ChatMessage;
+import com.agromarket.ampl_chat.models.api.MessageListResponse;
+import com.agromarket.ampl_chat.models.api.Product;
+import com.agromarket.ampl_chat.models.api.ProductListResponse;
+import com.agromarket.ampl_chat.models.api.SendMessageRequest;
+import com.agromarket.ampl_chat.models.api.SendMessageResponse;
+import com.agromarket.ampl_chat.models.api.SendProductRequest;
+import com.agromarket.ampl_chat.utils.ApiClient;
+import com.agromarket.ampl_chat.utils.ApiService;
+import com.agromarket.ampl_chat.utils.SessionManager;
+import com.bumptech.glide.Glide;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.util.ArrayList;
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class ChatScreenActivity extends AppCompatActivity {
+
+    private static final String BASE_URL = "http://10.0.2.2:8000/"; // your base
 
     RecyclerView chatRecycler;
     ChatMessageAdapter chatAdapter;
@@ -33,7 +52,9 @@ public class ChatScreenActivity extends AppCompatActivity {
     ImageView sendBtn, cartBtn, backBtn;
     String chatName;
 
-    ArrayList<ProductItem> productList = new ArrayList<>(); // sample product images
+    ArrayList<ProductItem> productList = new ArrayList<>();
+
+    SessionManager session;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -43,21 +64,19 @@ public class ChatScreenActivity extends AppCompatActivity {
         TextView chatTitle = findViewById(R.id.chatName);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(
-                    v.getPaddingLeft(),
-                    systemBars.top,
-                    v.getPaddingRight(),
-                    systemBars.bottom
-            );
+            v.setPadding(v.getPaddingLeft(), systemBars.top, v.getPaddingRight(), systemBars.bottom);
             return insets;
         });
 
+        session = new SessionManager(this);
+
         chatName = getIntent().getStringExtra("name");
-        chatTitle.setText(chatName);
+        chatTitle.setText(chatName == null ? "" : chatName);
 
         initViews();
         setupChatList();
-        loadDummyProducts();
+        loadProducts();
+        loadMessages();
 
         sendBtn.setOnClickListener(v -> sendTextMessage());
         cartBtn.setOnClickListener(v -> openProductPopup());
@@ -84,15 +103,35 @@ public class ChatScreenActivity extends AppCompatActivity {
         String msg = messageBox.getText().toString().trim();
         if (msg.isEmpty()) return;
 
-        MessageItem item = new MessageItem();
-        item.type = MessageItem.TYPE_TEXT;
-        item.text = msg;
+        int customerId = getIntent().getIntExtra("customer_id", 0);
+        String token = session.getToken();
+        if (token == null) {
+            Toast.makeText(this, "Not authenticated", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        messageList.add(item);
-        chatAdapter.notifyItemInserted(messageList.size() - 1);
+        ApiService api = ApiClient.getClient().create(ApiService.class);
+        SendMessageRequest body = new SendMessageRequest(customerId, msg);
 
-        chatRecycler.scrollToPosition(messageList.size() - 1);
-        messageBox.setText("");
+        api.sendTextMessage("Bearer " + token, body).enqueue(new Callback<SendMessageResponse>() {
+            @Override
+            public void onResponse(Call<SendMessageResponse> call, Response<SendMessageResponse> response) {
+                // add to UI as sent
+                MessageItem item = new MessageItem();
+                item.type = MessageItem.TYPE_TEXT;
+                item.text = msg;
+                item.isSent = true;
+                messageList.add(item);
+                chatAdapter.notifyItemInserted(messageList.size() - 1);
+                chatRecycler.scrollToPosition(messageList.size() - 1);
+                messageBox.setText("");
+            }
+
+            @Override
+            public void onFailure(Call<SendMessageResponse> call, Throwable t) {
+                Toast.makeText(ChatScreenActivity.this, "Send failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     // -----------------------------
@@ -119,20 +158,97 @@ public class ChatScreenActivity extends AppCompatActivity {
     }
 
     private void sendProductToChat(ProductItem product) {
-        MessageItem item = new MessageItem();
-        item.type = MessageItem.TYPE_IMAGE;
-        item.imageRes = product.imageRes;
+        int customerId = getIntent().getIntExtra("customer_id", 0);
+        String token = session.getToken();
 
-        messageList.add(item);
-        chatAdapter.notifyItemInserted(messageList.size() - 1);
-        chatRecycler.scrollToPosition(messageList.size() - 1);
+        ApiService api = ApiClient.getClient().create(ApiService.class);
+        SendProductRequest body = new SendProductRequest(customerId, product.id);
+
+        api.sendProductMessage("Bearer " + token, body).enqueue(new Callback<SendMessageResponse>() {
+            @Override
+            public void onResponse(Call<SendMessageResponse> call, Response<SendMessageResponse> response) {
+                MessageItem item = new MessageItem();
+                item.type = MessageItem.TYPE_IMAGE;
+                item.imageUrl = product.imageUrl;
+                item.isSent = true;
+                messageList.add(item);
+                chatAdapter.notifyItemInserted(messageList.size() - 1);
+                chatRecycler.scrollToPosition(messageList.size() - 1);
+            }
+
+            @Override
+            public void onFailure(Call<SendMessageResponse> call, Throwable t) {
+                Toast.makeText(ChatScreenActivity.this, "Send failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
-    private void loadDummyProducts() {
-        productList.add(new ProductItem(0));
-        productList.add(new ProductItem(0));
-        productList.add(new ProductItem(0));
-//        productList.add(new ProductItem(R.drawable.prod4));
-//        productList.add(new ProductItem(R.drawable.prod5));
+    private void loadProducts() {
+        String token = session.getToken();
+        ApiService api = ApiClient.getClient().create(ApiService.class);
+
+        api.getProducts("Bearer " + token).enqueue(new Callback<ProductListResponse>() {
+            @Override
+            public void onResponse(Call<ProductListResponse> call, Response<ProductListResponse> response) {
+                if (!response.isSuccessful() || response.body() == null) return;
+
+                productList.clear();
+                for (Product p : response.body().products) {
+                    // p.image contains relative path like "uploads/products/foo.png"
+                    String fullUrl = null;
+                    if (p.image != null && !p.image.isEmpty()) {
+                        // combine base + relative path (handle leading slash)
+                        fullUrl = BASE_URL + (p.image.startsWith("/") ? p.image.substring(1) : p.image);
+                    }
+
+                    productList.add(new ProductItem(p.id, p.name, fullUrl, p.sale_price));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ProductListResponse> call, Throwable t) { }
+        });
+    }
+
+    private void loadMessages() {
+        int customerId = getIntent().getIntExtra("customer_id", 0);
+        String token = session.getToken();
+        ApiService api = ApiClient.getClient().create(ApiService.class);
+
+        api.getMessages("Bearer " + token, customerId).enqueue(new Callback<MessageListResponse>() {
+            @Override
+            public void onResponse(Call<MessageListResponse> call, Response<MessageListResponse> response) {
+                if (!response.isSuccessful() || response.body() == null) return;
+
+                messageList.clear();
+
+                int myId = session.getUserId();
+
+                for (ChatMessage m : response.body().messages) {
+                    MessageItem item = new MessageItem();
+
+                    item.isSent = (m.sender_id == myId);
+
+                    if ("text".equals(m.type)) {
+                        item.type = MessageItem.TYPE_TEXT;
+                        item.text = m.message;
+                    } else if ("product".equals(m.type)) {
+                        item.type = MessageItem.TYPE_IMAGE;
+                        if (m.data != null && m.data.image != null) {
+                            // m.data.image contains relative path like "uploads/products/..."
+                            item.imageUrl = BASE_URL + (m.data.image.startsWith("/") ? m.data.image.substring(1) : m.data.image);
+                        }
+                    }
+
+                    messageList.add(item);
+                }
+
+                chatAdapter.notifyDataSetChanged();
+                chatRecycler.scrollToPosition(messageList.size() - 1);
+            }
+
+            @Override
+            public void onFailure(Call<MessageListResponse> call, Throwable t) { }
+        });
     }
 }

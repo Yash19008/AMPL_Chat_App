@@ -1,17 +1,27 @@
 package com.agromarket.ampl_chat.models;
 
 public class ChatItem {
+    private int customerId;
+    private String email;
+
     private String name;
     private String message;
     private String time;
     private int unreadCount;
 
-    public ChatItem(String name, String message, String time, int unreadCount) {
+    public ChatItem(int customerId, String name, String email) {
+        this.customerId = customerId;
         this.name = name;
-        this.message = message;
-        this.time = time;
-        this.unreadCount = unreadCount;
+        this.email = email;
+
+        // Default values for now (until you implement real messages)
+        this.message = "Tap to chat";
+        this.time = "";
+        this.unreadCount = 0;
     }
+
+    public int getCustomerId() { return customerId; }
+    public String getEmail() { return email; }
 
     public String getName() { return name; }
     public String getMessage() { return message; }

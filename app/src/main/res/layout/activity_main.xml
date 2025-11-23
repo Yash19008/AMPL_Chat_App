@@ -1,38 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <!-- Top header / search bar (simple) -->
+    <!-- Top header / search bar -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="110dp"
-        android:orientation="vertical"
+        android:layout_height="100dp"
+        android:orientation="horizontal"
+        android:gravity="center"
         android:padding="16dp"
-        android:background="#1b6b2f"> <!-- green header -->
+        android:background="#1b6b2f">
 
+        <!-- Search Bar -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="48dp"
+            android:layout_weight="1"
             android:orientation="horizontal"
             android:background="@android:color/white"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
-            android:layout_gravity="center_vertical"
-            android:layout_marginBottom="4dp"
-            android:backgroundTintMode="src_over"
-            android:clipToPadding="false">
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp">
 
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@android:drawable/ic_menu_search"
-                android:tint="#999" />
+                app:tint="#999" />
 
             <EditText
                 android:id="@+id/searchEdit"
@@ -44,15 +45,52 @@
                 android:paddingStart="8dp"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <!-- LOGOUT BUTTON on the RIGHT -->
+        <ImageView
+            android:id="@+id/btnLogout"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_lock_power_off"
+            app:tint="@android:color/white"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp"
+            android:padding="6dp"
+            android:contentDescription="Logout" />
+
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="No customers are assigned"
+        android:textSize="16sp"
+        android:textColor="#444"
+        android:gravity="center"
+        android:padding="20dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/txtNotFound"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="No results found"
+        android:textSize="16sp"
+        android:textColor="#555"
+        android:gravity="center"
+        android:padding="20dp"
+        android:visibility="gone" />
 
     <!-- RecyclerView for chat list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerChats"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="110dp"
+        android:layout_marginTop="100dp"
         android:padding="8dp"
-        android:clipToPadding="false" />
+        android:clipToPadding="false"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

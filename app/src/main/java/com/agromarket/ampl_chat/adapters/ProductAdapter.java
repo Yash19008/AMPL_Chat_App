@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.agromarket.ampl_chat.R;
 import com.agromarket.ampl_chat.models.ProductItem;
+import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
 
@@ -41,8 +42,11 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductH
     public void onBindViewHolder(@NonNull ProductHolder holder, int position) {
         ProductItem item = list.get(position);
 
-        if (item.imageRes != 0) {
-            holder.image.setImageResource(item.imageRes);
+        if (item.imageUrl != null && !item.imageUrl.isEmpty()) {
+            Glide.with(context)
+                    .load(item.imageUrl)
+                    .placeholder(R.drawable.ic_product_placeholder)
+                    .into(holder.image);
         } else {
             holder.image.setImageResource(R.drawable.ic_product_placeholder);
         }

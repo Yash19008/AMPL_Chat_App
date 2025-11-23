@@ -12,20 +12,21 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.agromarket.ampl_chat.R;
 import com.agromarket.ampl_chat.models.MessageItem;
+import com.bumptech.glide.Glide;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    Context context;
-    ArrayList<MessageItem> list;
+    private final Context context;
+    private final List<MessageItem> list;
 
     private static final int VIEW_SENT_TEXT = 1;
     private static final int VIEW_SENT_IMAGE = 2;
     private static final int VIEW_RECEIVED_TEXT = 3;
     private static final int VIEW_RECEIVED_IMAGE = 4;
 
-    public ChatMessageAdapter(Context context, ArrayList<MessageItem> list) {
+    public ChatMessageAdapter(Context context, List<MessageItem> list) {
         this.context = context;
         this.list = list;
     }
@@ -33,17 +34,12 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     @Override
     public int getItemViewType(int position) {
         MessageItem item = list.get(position);
-
-        // For demo → all messages are "sent"
-        // If you want real sender logic, add a senderId check here
-        boolean isSent = true;
+        boolean isSent = item.isSent;
 
         if (isSent) {
-            if (item.type == MessageItem.TYPE_TEXT) return VIEW_SENT_TEXT;
-            else return VIEW_SENT_IMAGE;
+            return item.type == MessageItem.TYPE_TEXT ? VIEW_SENT_TEXT : VIEW_SENT_IMAGE;
         } else {
-            if (item.type == MessageItem.TYPE_TEXT) return VIEW_RECEIVED_TEXT;
-            else return VIEW_RECEIVED_IMAGE;
+            return item.type == MessageItem.TYPE_TEXT ? VIEW_RECEIVED_TEXT : VIEW_RECEIVED_IMAGE;
         }
     }
 
@@ -51,51 +47,47 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 
+        LayoutInflater inflater = LayoutInflater.from(context);
+
         if (viewType == VIEW_SENT_TEXT) {
-            View v = LayoutInflater.from(context).inflate(R.layout.row_sent_text, parent, false);
+            View v = inflater.inflate(R.layout.row_sent_text, parent, false);
             return new SentTextHolder(v);
         }
 
         if (viewType == VIEW_SENT_IMAGE) {
-            View v = LayoutInflater.from(context).inflate(R.layout.row_sent_image, parent, false);
+            View v = inflater.inflate(R.layout.row_sent_image, parent, false);
             return new SentImageHolder(v);
         }
 
         if (viewType == VIEW_RECEIVED_TEXT) {
-            View v = LayoutInflater.from(context).inflate(R.layout.row_received_text, parent, false);
+            View v = inflater.inflate(R.layout.row_received_text, parent, false);
             return new ReceivedTextHolder(v);
         }
 
-        View v = LayoutInflater.from(context).inflate(R.layout.row_received_image, parent, false);
+        View v = inflater.inflate(R.layout.row_received_image, parent, false);
         return new ReceivedImageHolder(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-
         MessageItem item = list.get(position);
 
         if (holder instanceof SentTextHolder) {
             ((SentTextHolder) holder).msg.setText(item.text);
-        }
-
-        if (holder instanceof SentImageHolder) {
-            if (item.imageRes == 0) {
-                ((SentImageHolder) holder).img.setBackground(null); // remove bubble
-                ((SentImageHolder) holder).img.setImageResource(R.drawable.ic_product_placeholder);
-            } else {
-                ((SentImageHolder) holder).img.setBackground(null); // or your bubble bg if you want
-                ((SentImageHolder) holder).img.setImageResource(item.imageRes);
-            }
-        }
-
-
-        if (holder instanceof ReceivedTextHolder) {
+        } else if (holder instanceof SentImageHolder) {
+            SentImageHolder h = (SentImageHolder) holder;
+            Glide.with(context)
+                    .load(item.imageUrl)
+                    .placeholder(R.drawable.ic_product_placeholder)
+                    .into(h.img);
+        } else if (holder instanceof ReceivedTextHolder) {
             ((ReceivedTextHolder) holder).msg.setText(item.text);
-        }
-
-        if (holder instanceof ReceivedImageHolder) {
-            ((ReceivedImageHolder) holder).img.setImageResource(item.imageRes);
+        } else if (holder instanceof ReceivedImageHolder) {
+            ReceivedImageHolder h = (ReceivedImageHolder) holder;
+            Glide.with(context)
+                    .load(item.imageUrl)
+                    .placeholder(R.drawable.ic_product_placeholder)
+                    .into(h.img);
         }
     }
 
@@ -106,7 +98,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     // ---------- VIEW HOLDERS ----------
 
-    class SentTextHolder extends RecyclerView.ViewHolder {
+    static class SentTextHolder extends RecyclerView.ViewHolder {
         TextView msg;
         SentTextHolder(@NonNull View itemView) {
             super(itemView);
@@ -114,7 +106,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
     }
 
-    class SentImageHolder extends RecyclerView.ViewHolder {
+    static class SentImageHolder extends RecyclerView.ViewHolder {
         ImageView img;
         SentImageHolder(@NonNull View itemView) {
             super(itemView);
@@ -122,7 +114,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
     }
 
-    class ReceivedTextHolder extends RecyclerView.ViewHolder {
+    static class ReceivedTextHolder extends RecyclerView.ViewHolder {
         TextView msg;
         ReceivedTextHolder(@NonNull View itemView) {
             super(itemView);
@@ -130,7 +122,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
     }
 
-    class ReceivedImageHolder extends RecyclerView.ViewHolder {
+    static class ReceivedImageHolder extends RecyclerView.ViewHolder {
         ImageView img;
         ReceivedImageHolder(@NonNull View itemView) {
             super(itemView);
