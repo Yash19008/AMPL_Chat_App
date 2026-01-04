@@ -2,13 +2,13 @@ package com.agromarket.ampl_chat;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -32,11 +32,9 @@ import com.agromarket.ampl_chat.models.api.SendProductRequest;
 import com.agromarket.ampl_chat.utils.ApiClient;
 import com.agromarket.ampl_chat.utils.ApiService;
 import com.agromarket.ampl_chat.utils.SessionManager;
-import com.bumptech.glide.Glide;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -75,8 +73,12 @@ public class ChatScreenActivity extends AppCompatActivity {
     ImageView sendBtn, cartBtn, backBtn;
     String chatName;
     int receiverId;
-    ArrayList<ProductItem> productList = new ArrayList<>();
 
+    private int productCurrentPage = 1;
+    private boolean productIsLoading = false;
+    private boolean productHasMore = true;
+
+    ArrayList<ProductItem> productList = new ArrayList<>();
     SessionManager session;
 
     @Override
@@ -109,7 +111,6 @@ public class ChatScreenActivity extends AppCompatActivity {
         initViews();
         setupChatList();
         loadMessages();
-        loadProducts();
         markMessagesSeen();
 
         sendBtn.setOnClickListener(v -> sendTextMessage());
@@ -240,24 +241,59 @@ public class ChatScreenActivity extends AppCompatActivity {
     //   PRODUCT POPUP
     // -----------------------------
     private void openProductPopup() {
+
         BottomSheetDialog dialog = new BottomSheetDialog(this);
         View view = getLayoutInflater().inflate(R.layout.product_popup, null);
 
         RecyclerView productGrid = view.findViewById(R.id.productGrid);
-        productGrid.setLayoutManager(new GridLayoutManager(this, 3));
+        GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 3);
+        productGrid.setLayoutManager(gridLayoutManager);
 
-        ProductAdapter adapter = new ProductAdapter(productList, selected -> {
-            sendProductToChat(selected);
-            dialog.dismiss();
+        productList.clear();
+        productCurrentPage = 1;
+        productHasMore = true;
+
+        ProductAdapter adapter = new ProductAdapter(productList, null);
+        productGrid.setAdapter(adapter);
+
+        // initial skeleton
+        showSkeletons();
+        adapter.notifyDataSetChanged();
+
+        loadProducts(adapter);
+
+        // Pagination scroll listener
+        productGrid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                int visibleItemCount = gridLayoutManager.getChildCount();
+                int totalItemCount = gridLayoutManager.getItemCount();
+                int firstVisibleItemPosition = gridLayoutManager.findFirstVisibleItemPosition();
+
+                if (!productIsLoading && productHasMore &&
+                        (visibleItemCount + firstVisibleItemPosition >= totalItemCount - 3)) {
+                    loadProducts(adapter);
+                }
+            }
         });
 
-        productGrid.setAdapter(adapter);
+        view.findViewById(R.id.sendSelected).setOnClickListener(v -> {
+            for (ProductItem p : productList) {
+                if (p.isSelected && !p.isSkeleton) {
+                    sendProductToChat(p);
+                }
+            }
+            dialog.dismiss();
+        });
 
         view.findViewById(R.id.closePopup).setOnClickListener(v -> dialog.dismiss());
 
         dialog.setContentView(view);
         dialog.show();
     }
+
     public void retrySend(MessageItem item, int position) {
 
         String token = session.getToken();
@@ -391,32 +427,60 @@ public class ChatScreenActivity extends AppCompatActivity {
                     }
                 });
     }
-    private void loadProducts() {
+    private void loadProducts(ProductAdapter adapter) {
+
+        if (productIsLoading || !productHasMore) return;
+
         String token = session.getToken();
+        if (token == null) return;
+
+        productIsLoading = true;
+
         ApiService api = ApiClient.getClient().create(ApiService.class);
 
-        api.getProducts("Bearer " + token).enqueue(new Callback<ProductListResponse>() {
-            @Override
-            public void onResponse(Call<ProductListResponse> call, Response<ProductListResponse> response) {
-                if (!response.isSuccessful() || response.body() == null) return;
+        api.getProducts("Bearer " + token, productCurrentPage)
+                .enqueue(new Callback<ProductListResponse>() {
 
-                productList.clear();
-                for (Product p : response.body().products) {
-                    // p.image contains relative path like "uploads/products/foo.png"
-                    String fullUrl = null;
-                    if (p.image != null && !p.image.isEmpty()) {
-                        // combine base + relative path (handle leading slash)
-                        fullUrl = BASE_URL + (p.image.startsWith("/") ? p.image.substring(1) : p.image);
+                    @Override
+                    public void onResponse(Call<ProductListResponse> call,
+                                           Response<ProductListResponse> response) {
+
+                        productIsLoading = false;
+
+                        if (!response.isSuccessful() || response.body() == null) return;
+
+                        // remove skeletons
+                        removeSkeletons();
+
+                        for (Product p : response.body().products) {
+                            String img = null;
+                            if (p.image != null && !p.image.isEmpty()) {
+                                img = BASE_URL + (p.image.startsWith("/") ?
+                                        p.image.substring(1) : p.image);
+                            }
+
+                            productList.add(
+                                    new ProductItem(p.id, p.name, img, p.sale_price)
+                            );
+                        }
+
+                        productHasMore = response.body().has_more;
+                        productCurrentPage++;
+
+                        adapter.notifyDataSetChanged();
+
+                        // add bottom skeleton if more pages
+                        if (productHasMore) addBottomSkeletons(adapter);
                     }
 
-                    productList.add(new ProductItem(p.id, p.name, fullUrl, p.sale_price));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ProductListResponse> call, Throwable t) { }
-        });
+                    @Override
+                    public void onFailure(Call<ProductListResponse> call, Throwable t) {
+                        productIsLoading = false;
+                    }
+                });
     }
+
+
     @Override
     public void onBackPressed() {
         boolean isCustomer = session.getUserRole() != null && session.getUserRole().equals("customer");
@@ -433,4 +497,27 @@ public class ChatScreenActivity extends AppCompatActivity {
             super.onBackPressed(); // Agent → normal back behavior
         }
     }
+
+
+//    Products loading Helpers
+    private void showSkeletons() {
+        productList.clear();
+        for (int i = 0; i < 6; i++) {
+            productList.add(new ProductItem(true));
+        }
+    }
+    private void addBottomSkeletons(ProductAdapter adapter) {
+        for (int i = 0; i < 3; i++) {
+            productList.add(new ProductItem(true));
+        }
+        adapter.notifyDataSetChanged();
+    }
+    private void removeSkeletons() {
+        for (int i = productList.size() - 1; i >= 0; i--) {
+            if (productList.get(i).isSkeleton) {
+                productList.remove(i);
+            }
+        }
+    }
+
 }
