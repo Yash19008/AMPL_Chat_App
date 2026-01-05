@@ -42,16 +42,15 @@ import retrofit2.Response;
 
 /*
 TODO:
-1. Full Product List Screen
-2. Multiple Products Selection
+1. Multiple Products Selection - Done
 
-3. Show time for every message - Done
-4. Show seen if it is - Done
-5. Product Send with Name and Price - Done
-6. Prevent from sending same message multiple times - Done
+2. Show time for every message - Done
+3. Show seen if it is - Done
+4. Product Send with Name and Price - Done
+5. Prevent from sending same message multiple times - Done
 
-7. Agora Voice Calling
-8. Payment Link
+6. Agora Voice Calling
+7. Payment Link
  */
 
 public class ChatScreenActivity extends AppCompatActivity {
@@ -497,7 +496,6 @@ public class ChatScreenActivity extends AppCompatActivity {
             super.onBackPressed(); // Agent → normal back behavior
         }
     }
-
 
 //    Products loading Helpers
     private void showSkeletons() {
