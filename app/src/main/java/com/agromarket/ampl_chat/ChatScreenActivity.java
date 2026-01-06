@@ -42,15 +42,13 @@ import retrofit2.Response;
 
 /*
 TODO:
-1. Multiple Products Selection - Done
+1. Retry coming as status after being sent
+2. Product sending issue app crash
+3. On retry its sending as a new message item
+4. On back press its logging out (on customer)
 
-2. Show time for every message - Done
-3. Show seen if it is - Done
-4. Product Send with Name and Price - Done
-5. Prevent from sending same message multiple times - Done
-
-6. Agora Voice Calling
-7. Payment Link
+5. Agora Voice Calling
+6. Payment Link
  */
 
 public class ChatScreenActivity extends AppCompatActivity {
