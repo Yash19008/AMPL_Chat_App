@@ -31,7 +31,7 @@ import com.agromarket.ampl_chat.models.api.SendMessageResponse;
 import com.agromarket.ampl_chat.models.api.SendProductRequest;
 import com.agromarket.ampl_chat.utils.ApiClient;
 import com.agromarket.ampl_chat.utils.ApiService;
-import com.agromarket.ampl_chat.utils.RealtimeManager;
+import com.agromarket.ampl_chat.utils.RealtimeSocketManager;
 import com.agromarket.ampl_chat.utils.SessionManager;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.gson.Gson;
@@ -116,17 +116,21 @@ public class ChatScreenActivity extends AppCompatActivity {
         cartBtn.setOnClickListener(v -> openProductPopup());
         backBtn.setOnClickListener(v -> onBackPressed());
 
+        int myId = session.getUserId();
 
-        RealtimeManager realtime = new RealtimeManager();
-
-        realtime.connect(
-                this,
-                session.getUserId(),
-                receiverId,
-                session.getToken(),
-                data -> runOnUiThread(() -> handleRealtimeMessage(data))
+        RealtimeSocketManager.connect(
+                session,
+                myId,
+                this::handleIncomingMessage
         );
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        RealtimeSocketManager.disconnect();
+    }
+
     private void initViews() {
         chatRecycler = findViewById(R.id.chatRecycler);
         messageBox = findViewById(R.id.messageBox);
@@ -544,26 +548,44 @@ public class ChatScreenActivity extends AppCompatActivity {
         }
     }
 
-    private void handleRealtimeMessage(String json) {
+    private void handleIncomingMessage(String data) {
 
-        Gson gson = new Gson();
-        ChatMessage m = gson.fromJson(json, ChatMessage.class);
+        runOnUiThread(() -> {
 
-        MessageItem item = new MessageItem();
-        item.isSent = false;
-        item.time = m.created_at_formatted;
+            Gson gson = new Gson();
+            ChatMessage m = gson.fromJson(data, ChatMessage.class);
 
-        if ("text".equals(m.type)) {
-            item.type = MessageItem.TYPE_TEXT;
-            item.text = m.message;
-        } else if ("product".equals(m.type)) {
-            item.type = MessageItem.TYPE_IMAGE;
-            item.text = m.data.name + "\n" + m.data.price;
-            item.imageUrl = BASE_URL + m.data.image;
-        }
+            // Ignore messages I sent myself (already added optimistically)
+            if (m.sender_id == session.getUserId()) return;
 
-        messageList.add(item);
-        chatAdapter.notifyItemInserted(messageList.size() - 1);
-        chatRecycler.scrollToPosition(messageList.size() - 1);
+            MessageItem item = new MessageItem();
+            item.isSent = false;
+            item.time = m.created_at_formatted;
+            item.status = MessageItem.STATUS_SENT;
+
+            if ("text".equals(m.type)) {
+                item.type = MessageItem.TYPE_TEXT;
+                item.text = m.message;
+            }
+            else if ("product".equals(m.type) && m.data != null) {
+                item.type = MessageItem.TYPE_IMAGE;
+                item.text = m.data.name + "\n" + m.data.price;
+                item.productId = m.data.id;
+
+                if (m.data.image != null) {
+                    item.imageUrl = BASE_URL +
+                            (m.data.image.startsWith("/") ?
+                                    m.data.image.substring(1) :
+                                    m.data.image);
+                }
+            }
+
+            messageList.add(item);
+            chatAdapter.notifyItemInserted(messageList.size() - 1);
+            chatRecycler.scrollToPosition(messageList.size() - 1);
+
+            // Auto mark seen
+            markMessagesSeen();
+        });
     }
 }
