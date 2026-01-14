@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment;
 
 import com.agromarket.ampl_chat.LoginActivity;
 import com.agromarket.ampl_chat.R;
+import com.agromarket.ampl_chat.RegisterActivity;
 
 public class SplashFragment3 extends Fragment {
 
@@ -33,7 +34,11 @@ public class SplashFragment3 extends Fragment {
         view.findViewById(R.id.btnLogin).setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), LoginActivity.class);
             startActivity(intent);
-            requireActivity().finish(); // Optional: closes the current activity so user can't go back
+        });
+
+        view.findViewById(R.id.btnRegister).setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), RegisterActivity.class);
+            startActivity(intent);
         });
 
         return view;

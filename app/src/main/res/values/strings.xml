@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AMPL CHAT</string>
+    <string name="license_type">License Type</string>
 </resources>
