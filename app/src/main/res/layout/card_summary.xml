@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="100dp"
+    android:layout_weight="1"
+    android:layout_margin="6dp"
+    android:backgroundTint="#B2E3A6">
+
+    <TextView
+        android:id="@+id/cardText"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="Total Products"
+        android:textStyle="bold"/>
+</com.google.android.material.card.MaterialCardView>
