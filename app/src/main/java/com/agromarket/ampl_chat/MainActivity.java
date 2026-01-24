@@ -43,6 +43,7 @@ TODO:
 1. Realtime Chat Updates
 2. Add Navbar
 3. Add profile option
+4. User Icons and Call Option
  */
 
 public class MainActivity extends AppCompatActivity {

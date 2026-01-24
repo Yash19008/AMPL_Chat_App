@@ -57,6 +57,7 @@ TODO:
 5. Show Call History
 6. Product Order System
 7. Image and Video View
+8. Background Call Updates
  */
 
 public class ChatScreenActivity extends AppCompatActivity
